@@ -1,0 +1,118 @@
+FORMAT: 1A
+
+# Error-Handling
+
+# Group ResponseMessage
+
+All user requests to create a new entity are validated against an [JSON-Schmema](http://json-schema.org/). 
+In response they (if not stated otherwise) get a *ResponseMessage*, contained inside the HTTP message response body. 
+A ResponseMessage is also returned when an error occured.
+Together with the [HTTP status codes] (http://en.wikipedia.org/wiki/List_of_HTTP_status_codes) 
+this message can be used to identify if the request succeded and the error source in case somenthing went wrong. 
+
+A ResponseMessage is a JSON object containing the request status,
+a timestamp and an *ErrorMessage* object. *It is built according the JSON-Schema you can see by viewing the sourcode of this page.*
+
+**ResponseMessage-Properties:**
+
+| Name      |      Type         |  Description  |  required |
+|----------|:-------------:|:------:|------|
+| requestStatus     |  Enum     | One of: "INIT, "PENDING", "DONE", "ERROR"  | True  |
+| createdAt     |  Timestamp    | Unix Timestamp in seconds since Jan 01 1970 stating when this message was created.  | True  |
+| errorMessage     |  Object     | Object stating errors and violations or null (if HTTP status code is not 2xx)  | True  |
+
+A ErrorMessage contains informations about the error occured in the form of an integer property,
+an error description and in case of a violation error a list of *violations*. 
+
+**ErrorMessage-Properties:**
+
+| Name      |      Type         |  Description  |  required |
+|----------|:-------------:|:------:|------|
+| errorCode     |  Integer     | Error code. See Code Table.  | True  |
+| error     |  String    | Error message in english only. This value is allways null on production server.  | True  |
+| violations     |  Array     | List of violation objects. | False  |
+
+A violation is a input field violation in this context. A violation could be for example a required 
+input field which was left empty or a field containing data not matching a certain pattern.
+
+**Violation-Properties:**
+
+| Name      |      Type         |  Description  |  required |
+|----------|:-------------:|:------:|------|
+| errorCode     |  Integer     | Error code. See Code Table.  | True  |
+| details     |  String    | Error message in english only. This value is allways null on production server.  | True  |
+| field     |  String     | Name of the violated input field. | True  |
+
+## Example Entity  [/]
+### Create a Entity [POST]
++ Response 201 (application/json)
+
+    ﻿+ Body
+
+            { 
+                "requestStatus": "DONE", 
+                "createdAt": 1425017890069,
+                "errorMessage": null 
+            }
+
+    + Schema
+
+            {
+              "type" : "object",
+              "$schema" : "http://json-schema.org/draft-04/schema#",
+              "description" : "Standard response for all requests trying to create/update a ressource.",
+              "title" : "ResponseMessage",
+              "properties" : {
+                "errorMessage" : {
+                  "type" : "object",
+                  "description" : "Contains the error description if there was an error or null.",
+                  "title" : "ErrorMessage",
+                  "required" : [ "errorCode", "error" ],
+                  "properties" : {
+                    "errorCode" : {
+                      "type" : "integer",
+                      "description" : "Int code of error."
+                    },
+                    "error" : {
+                      "type" : "string",
+                      "description" : "Error message only used for debugging."
+                    },
+                    "violations" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "$schema" : "http://json-schema.org/draft-04/schema#",
+                        "description" : "Describes property violation.",
+                        "title" : "Violation",
+                        "required" : [ "details", "field", "errorcode" ],
+                        "properties" : {
+                          "details" : {
+                            "type" : "string",
+                            "description" : "Error message only used for debugging."
+                          },
+                          "field" : {
+                            "type" : "string",
+                            "description" : "Name of property."
+                          },
+                          "errorcode" : {
+                            "type" : "integer",
+                            "description" : "Int code of error."
+                          }
+                        }
+                      },
+                      "description" : "List of property violations or null."
+                    }
+                  }
+                },
+                "createdAt" : {
+                  "type" : "integer",
+                  "description" : "Contains the time when this respond was created as timestamp in ms."
+                },
+                "requestStatus" : {
+                  "enum" : [ "INIT", "PENDING", "DONE", "ERROR" ],
+                  "description" : "Status of request."
+                }
+              },
+              "required" : [ "createdAt", "requestStatus" ]
+            }
+
